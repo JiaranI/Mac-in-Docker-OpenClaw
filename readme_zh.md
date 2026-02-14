@@ -116,6 +116,16 @@ openclaw onboard --install-daemon
 
 ## 功能演示
 
+### 查看运行环境
+
+```
+Report the environment you are currently in
+```
+
+![运行环境报告](images/report_state.png)
+
+可以看到 OpenClaw 运行在 macOS 环境中。
+
 ### 发送 WhatsApp 消息
 
 ```

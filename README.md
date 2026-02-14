@@ -115,6 +115,16 @@ Select **Hatch in TUI (recommended)** to start the terminal interface.
 
 ## Demo
 
+### Check Environment
+
+```
+Report the environment you are currently in
+```
+
+![Environment Report](images/report_state.png)
+
+You can see OpenClaw is running in macOS environment.
+
 ### Send WhatsApp Message
 
 ```
