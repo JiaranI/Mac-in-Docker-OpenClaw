@@ -9,10 +9,13 @@
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [When to Use This Setup](#when-to-use-this-setup)
+- [What You Get](#what-you-get)
+- [Requirements](#requirements)
 - [Download macOS Image](#download-macos-image)
 - [Start macOS Docker Container](#start-macos-docker-container)
-- [Configure OpenClaw](#configure-openclaw)
-- [Launch OpenClaw](#launch-openclaw)
+- [Connect to macOS](#connect-to-macos)
+- [OpenClaw App Guide](#openclaw-app-guide)
 - [Demo](#demo)
 
 ---
@@ -24,9 +27,41 @@
 
 ---
 
+## When to Use This Setup
+
+- You want to run macOS on Linux or Windows
+- You need macOS-only features (for example, iMessage via BlueBubbles)
+- You want a containerized, reproducible macOS environment
+
+## What You Get
+
+- macOS running on Linux/Windows without Apple hardware
+- iMessage support via BlueBubbles (after setup)
+- Portable environment that is easy to reset
+
+## Requirements
+
+### Linux
+
+- Modern CPU with virtualization support (Intel VT-x or AMD-V)
+- KVM enabled (`/dev/kvm` accessible)
+- Docker installed
+- ~80 GB free disk space
+- 8+ GB RAM recommended
+
+### Windows
+
+- Windows 10/11 with WSL2
+- Docker Desktop with WSL2 backend
+- ~80 GB free disk space
+- 8+ GB RAM recommended
+
+---
+
 ## Download macOS Image
 
-Download the required image files from Hugging Face (~50GB):
+
+Download the required image files (~40GB) from Hugging Face:
 
 ```bash
 pip install huggingface_hub
@@ -34,7 +69,7 @@ pip install huggingface_hub
 huggingface-cli download fuyikun/Mac-in-docker-OpenClaw --local-dir .
 ```
 
-Or use Python:
+Or using Python:
 
 ```python
 from huggingface_hub import snapshot_download
@@ -46,74 +81,76 @@ snapshot_download(repo_id="fuyikun/Mac-in-docker-OpenClaw", local_dir=".")
 
 ## Start macOS Docker Container
 
+**For Linux users:**
+
 ```bash
 # Start the container
-./start_mac.sh
-
-# SSH into macOS
-ssh -p 52271 pipiwu@localhost
-
-# VNC connect to macOS desktop
-vncviewer localhost:5901
+sudo docker run -itd \
+    --name "macos_openclaw" \
+    --device /dev/kvm \
+    -p 52272:10022 \
+    -p 5902:5902 \
+    --add-host=host.docker.internal:host-gateway \
+    -e "DISPLAY=${DISPLAY:-:0.0}" \
+    -e EXTRA="-vnc 0.0.0.0:2,password=off" \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -e CPU='Haswell-noTSX' \
+    -e CPUID_FLAGS='kvm=on,vendor=GenuineIntel,+invtsc,vmware-cpuid-freq=on' \
+    -v "/path/to/mac_hdd_ng.img:/home/arch/OSX-KVM/mac_hdd_ng_src.img" \
+    -v "/path/to/BaseSystem.img:/home/arch/OSX-KVM/BaseSystem_src.img" \
+    -e SHORTNAME=tahoe \
+    -e USERNAME=test \
+    -e PASSWORD='1234' \
+    numbmelon/docker-osx-evalkit-auto:latest
 ```
 
-![macOS Desktop](images/macos.jpg)
+**For Windows (WSL2) users:**
 
-> **Note**: First connection may require waiting for the container to fully boot.
+Run the same command inside your WSL2 Linux distribution. The `/dev/kvm` device and X11 socket paths are Linux-specific, so make sure KVM is available in WSL2.
+
+Replace `/path/to/` with the actual path where you downloaded the image files.
 
 ---
 
-## Configure OpenClaw
+## Connect to macOS
+
+### SSH connection
 
 ```bash
-openclaw onboard --install-daemon
+ssh -p 52272 test@localhost
 ```
 
-Follow the wizard to complete the configuration:
+### VNC connection (desktop)
 
-### 1. Security Warning
+```bash
+vncviewer localhost:5902
+```
 
-Select **Yes** to continue.
+Enter 1234 as password to unlock the desktop.
 
-### 2. Onboarding Mode
+![macOS Desktop](images/macos.png)
 
-Select **QuickStart**.
+> **Note**: The first connection may take a while as the container fully boots up.
 
-### 3. Configure AI Model
-
-1. Model/auth provider: **OpenAI**
-2. OpenAI auth method: **OpenAI Codex (ChatGPT OAuth)**
-3. Open the generated OAuth URL in your local browser
-4. After logging in, copy the redirect URL and paste it back to the terminal
-
-### 4. Configure WhatsApp
-
-1. Select channel: **WhatsApp (QR link)**
-2. Link WhatsApp now (QR)?: **Yes**
-3. Scan the QR code in terminal with your phone
-   - WhatsApp → Settings → Linked Devices → Link a Device
-4. Enter your WhatsApp phone number (e.g., `+1234567890`)
-
-### 5. Configure Skills and Services
-
-- Configure skills now?: **Yes**
-- Install missing skill dependencies: **Skip for now**
-- API Keys: Configure as needed
-
-### 6. Configure Hooks and Gateway
-
-- Enable hooks?: **Skip for now**
-- Gateway service: **Restart**
+Then download OpenClaw.img and continue to the [OpenClaw App Guide](https://docs.openclaw.ai/start/onboarding) to configure the macOS app.
 
 ---
 
-## Launch OpenClaw
 
-Select **Hatch in TUI (recommended)** to start the terminal interface.
+
+## OpenClaw App Guide
+
+
+
+First, download the OpenClaw macOS app. Then follow the official onboarding guide for setup and channel configuration:
+
+- [OpenClaw App Guide](https://docs.openclaw.ai/start/onboarding)
 
 ---
 
 ## Demo
+![Final Demo](images/final.png)
+
 
 ### Check Environment
 
@@ -150,6 +187,7 @@ Example reminder formats:
 | `Create a reminder: meeting in 2 hours` | Reminder in 2 hours |
 
 ---
+
 
 ## Acknowledgements
 

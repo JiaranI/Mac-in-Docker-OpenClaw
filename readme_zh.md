@@ -2,17 +2,20 @@
 
 > **No Mac? No Problem!**
 >
-> 想体验 OpenClaw 的完整功能，却苦于没有 Mac？本项目让你在 Windows / Linux 上通过 Docker 运行 macOS，零成本解锁 OpenClaw 全部能力。
+> 想体验 OpenClaw 的完整功能，却没有 Mac？本项目让你在 Windows / Linux 上通过 Docker 运行 macOS，零成本解锁 OpenClaw 的完整能力。
 >
-> 已有 Mac 但担心安全问题？用 Docker 隔离运行，安心尝鲜。
+> 已有 Mac 但担心安全问题？也可以用 Docker 隔离运行，安心尝试。
 
 ## 目录
 
 - [前置条件](#前置条件)
+- [什么时候适合使用这个方案](#什么时候适合使用这个方案)
+- [你将获得什么](#你将获得什么)
+- [环境要求](#环境要求)
 - [下载 macOS 镜像](#下载-macos-镜像)
 - [启动 macOS Docker 容器](#启动-macos-docker-容器)
-- [配置 OpenClaw](#配置-openclaw)
-- [启动 OpenClaw](#启动-openclaw)
+- [连接 macOS](#连接-macos)
+- [OpenClaw App 指南](#openclaw-app-指南)
 - [功能演示](#功能演示)
 
 ---
@@ -20,13 +23,44 @@
 ## 前置条件
 
 - Docker 已安装
-- Linux 或 Windows(WSL)
+- Linux 或 Windows (WSL)
+
+---
+
+## 什么时候适合使用这个方案
+
+- 你想在 Linux 或 Windows 上运行 macOS
+- 你需要 macOS 专属能力（例如通过 BlueBubbles 使用 iMessage）
+- 你希望使用容器化、可复现的 macOS 环境
+
+## 你将获得什么
+
+- 无需 Apple 硬件，在 Linux/Windows 运行 macOS
+- 配置完成后可支持通过 BlueBubbles 使用 iMessage
+- 便携、易重置的运行环境
+
+## 环境要求
+
+### Linux
+
+- 支持虚拟化的现代 CPU（Intel VT-x 或 AMD-V）
+- 已启用 KVM（可访问 `/dev/kvm`）
+- 已安装 Docker
+- 约 80 GB 可用磁盘空间
+- 建议 8 GB 及以上内存
+
+### Windows
+
+- Windows 10/11 + WSL2
+- Docker Desktop（WSL2 backend）
+- 约 80 GB 可用磁盘空间
+- 建议 8 GB 及以上内存
 
 ---
 
 ## 下载 macOS 镜像
 
-从 Hugging Face 下载所需的镜像文件（约 50GB）：
+从 Hugging Face 下载所需镜像文件（约 40GB）：
 
 ```bash
 pip install huggingface_hub
@@ -46,75 +80,72 @@ snapshot_download(repo_id="fuyikun/Mac-in-docker-OpenClaw", local_dir=".")
 
 ## 启动 macOS Docker 容器
 
+**Linux 用户：**
+
 ```bash
 # 启动容器
-./start_mac.sh
-
-# SSH 连接到 macOS
-ssh -p 52271 pipiwu@localhost
-
-# VNC 连接到 macOS 桌面
-vncviewer localhost:5901
-
+sudo docker run -itd \
+    --name "macos_openclaw" \
+    --device /dev/kvm \
+    -p 52272:10022 \
+    -p 5902:5902 \
+    --add-host=host.docker.internal:host-gateway \
+    -e "DISPLAY=${DISPLAY:-:0.0}" \
+    -e EXTRA="-vnc 0.0.0.0:2,password=off" \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -e CPU='Haswell-noTSX' \
+    -e CPUID_FLAGS='kvm=on,vendor=GenuineIntel,+invtsc,vmware-cpuid-freq=on' \
+    -v "/path/to/mac_hdd_ng.img:/home/arch/OSX-KVM/mac_hdd_ng_src.img" \
+    -v "/path/to/BaseSystem.img:/home/arch/OSX-KVM/BaseSystem_src.img" \
+    -e SHORTNAME=tahoe \
+    -e USERNAME=test \
+    -e PASSWORD='1234' \
+    numbmelon/docker-osx-evalkit-auto:latest
 ```
 
-![macOS 桌面](images/macos.jpg)
+**Windows (WSL2) 用户：**
+
+在 WSL2 的 Linux 发行版中执行同一条命令。`/dev/kvm` 和 X11 socket 路径是 Linux 特有的，请确保 WSL2 中可用 KVM。
+
+将 `/path/to/` 替换为你实际下载镜像文件的路径。
+
+---
+
+## 连接 macOS
+
+### SSH 连接
+
+```bash
+ssh -p 52272 test@localhost
+```
+
+### VNC 连接（桌面）
+
+```bash
+vncviewer localhost:5902
+```
+
+输入 `1234` 作为密码进入桌面。
+
+![macOS 桌面](images/macos.png)
 
 > **注意**：首次连接可能需要等待容器完全启动。
 
----
-
-## 配置 OpenClaw
-
-```bash
-openclaw onboard --install-daemon
-```
-
-按照向导完成以下配置：
-
-### 1. 安全警告确认
-
-选择 **Yes** 继续。
-
-### 2. 选择 Onboarding 模式
-
-选择 **QuickStart**。
-
-### 3. 配置 AI 模型
-
-1. Model/auth provider: **OpenAI**
-2. OpenAI auth method: **OpenAI Codex (ChatGPT OAuth)**
-3. 在本地浏览器打开生成的 OAuth URL
-4. 登录后复制重定向 URL 粘贴回终端
-
-### 4. 配置 WhatsApp
-
-1. Select channel: **WhatsApp (QR link)**
-2. Link WhatsApp now (QR)?: **Yes**
-3. 用手机 WhatsApp 扫描终端中的 QR 码
-   - WhatsApp → 设置 → 已关联设备 → 关联设备
-4. 输入你的 WhatsApp 手机号码（如 `+8618698002296`）
-
-### 5. 配置技能和服务
-
-- Configure skills now?: **Yes**
-- Install missing skill dependencies: **Skip for now**
-- API Keys: 按需配置
-
-### 6. 配置 Hooks 和 Gateway
-
-- Enable hooks?: **Skip for now**
-- Gateway service: **Restart**
+然后请下载 OpenClaw.img，并继续阅读 [OpenClaw App 指南](https://docs.openclaw.ai/start/onboarding) 完成 macOS app 配置。
 
 ---
 
-## 启动 OpenClaw
+## OpenClaw App 指南
 
-选择 **Hatch in TUI (recommended)** 启动终端交互界面。
+先下载 OpenClaw macOS app，然后按照官方 onboarding 文档完成初始化和渠道配置：
+
+- [OpenClaw App Guide](https://docs.openclaw.ai/start/onboarding)
 
 ---
 
 ## 功能演示
+
+![最终效果](images/final.png)
 
 ### 查看运行环境
 
@@ -146,9 +177,9 @@ Use Reminders to set a reminder for 8:00 AM tomorrow morning.
 
 | 示例指令 | 说明 |
 |----------|------|
-| `Remind me to call mom at 3pm` | 下午3点提醒打电话 |
-| `Set a reminder for tomorrow 9am to check emails` | 明天早9点检查邮件 |
-| `Create a reminder: meeting in 2 hours` | 2小时后会议提醒 |
+| `Remind me to call mom at 3pm` | 下午 3 点提醒打电话 |
+| `Set a reminder for tomorrow 9am to check emails` | 明天早上 9 点检查邮件 |
+| `Create a reminder: meeting in 2 hours` | 2 小时后会议提醒 |
 
 ---
 
